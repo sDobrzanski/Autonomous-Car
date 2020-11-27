@@ -1,9 +1,15 @@
-WERSJA KOŃCOWA
-#include <Servo.h>dal
+#define BLYNK_PRINT Serial
+
+#include <ESP8266WiFi.h>
+#include <BlynkSimpleEsp8266.h>
+#include <Servo.h>
 #include <PID_v1.h>
 
-#define motorRightPin  12    //kierunek prawo Pin
-#define motorLeftPin     11   //kierunek lewo Pin
+char auth[] = "ID";
+char ssid[] = "wifiLogin";
+char pass[] = "wifiHaslo";
+#define motorRightPin  D7   //kierunek prawo Pin
+#define motorLeftPin     D6   //kierunek lewo Pin
 #define VelocPin    10  //predkosc silnika Pin
 #define servoPin     9    //servo Pin
 #define triggerPin1  7    //czujnik 1 triggerPin
@@ -20,34 +26,47 @@ const double Ki = 5;
 const double Kd = 1;
 PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
 const int a = 0;
-const int b =23;    //zmienne dotyczące regulowanego przez PID kąta wychylenia //serwo [PMW]
+const int b =23;    //zmienne dotyczące regulowanego przez PID kąta wychylenia 
 int predkosc = 0;     //PWM silnika dla predkosci autka
 int odl1 = 0;       //odleglosc przeszkody od 1 czujnika(z lewej)
 int odl2 = 0;     //odleglosc przeszkody od 2 czujnika(srodek)
-int odl3 = 0;     //odleglosc przeszkody od 3 czujnika(z prawej)
+int  odl3 = 0;      //odleglosc przeszkody od 3 czujnika(z prawej)
 bool isFound = false;
 float angleVal = 93; //punkt zerowy servo
 const int criticalPoint = 10; //odleglosc od sciany w ktorej auto sie zatrzyma
-int g = 0;
+int g = 255/(b-a); // oblicza (zaokrągla do int) ile “stopni” PMW przypada dla jednego stopnia //skrętu serwo
 int wynik = 0;
-g = 255/(b-a); // oblicza (zaokrągla do int) ile “stopni” PMW przypada dla jednego stopnia //skrętu serwo
 
+BLYNK_READ(V0) 
+{
+  Blynk.virtualWrite(V0, odczytOdl1()); 
+}
+BLYNK_READ(V1) 
+{
+  Blynk.virtualWrite(V1, odczytOdl2());
+}
+BLYNK_READ(V2)
+{
+  Blynk.virtualWrite(V2, odczytOdl3());
+}
 
 void setup(){
     Serial.begin(9600);
-    
+    ESP.eraseConfig();
+    Blynk.begin(auth, ssid, pass);
+
     pinMode(motorRightPin, OUTPUT);
     pinMode(motorLeftPin, OUTPUT);
     pinMode(VelocPin, OUTPUT);
   
-    digitalWrite(motorRightPin, HIGH);
+    digitalWrite(motorRightPin, LOW);
     digitalWrite(motorLeftPin, LOW);
   
     servo.attach(servoPin); //przypisanie Pinu do servo
     servo.write(angleVal); //ustawienie servo w pozycji poczatkowej
 
     myPID.SetMode(AUTOMATIC); //turn the PID on
-    myPID.SetOutputLimits(a, b); //ustawienie limitu PIDA na a-b stopni zeby kola obracaly sie max o (b-a) stopnie
+    myPID.SetOutputLimits(a, b); //ustawienie limitu PIDA na a-b stopni zeby kola obracaly //sie max o (b-a) stopnie
     carStart(); //funkcja aby auto podjechalo do pierwszej sciany
 }
 
@@ -58,7 +77,7 @@ void loop(){
    Serial.print(angleVal);
    Serial.println(" kąt");
    servo.write(angleVal);
-   delay(100); //wykonanie co 0.1 sekundy
+   Blynk.run();
 }
 
 long odczytOdl1()
@@ -71,7 +90,7 @@ long odczytOdl1()
   delayMicroseconds(10);
   digitalWrite(triggerPin1, LOW);
   pinMode(echoPin1, INPUT);
-  odl1 = 0.01723 *pulseIn(echoPin1, HIGH); //returns the sound wave travel time in cm
+  odl1 = 0.01723 *pulseIn(echoPin1, HIGH) -2;//modyfikacja po ustawieniu czujników     //returns the sound wave travel time in cm
   Serial.println(odl1);
   return odl1; //odleglosc od sciany w cm
 }
@@ -85,7 +104,7 @@ long odczytOdl2()
   delayMicroseconds(10);
   digitalWrite(triggerPin2, LOW);
   pinMode(echoPin2, INPUT);
-  odl2 = 0.01723 *pulseIn(echoPin2, HIGH);
+  odl2 = 0.01723 *pulseIn(echoPin2, HIGH) -7;//modyfikacja po ustawieniu czujników
   Serial.println(odl2);
   return odl2;      //odleglosc od sciany w cm
 }
@@ -99,8 +118,7 @@ long odczytOdl3()
   delayMicroseconds(10);
   digitalWrite(triggerPin3, LOW);
   pinMode(echoPin3, INPUT);
-  odl3 = 0.01723 *pulseIn(echoPin3, HIGH);
-  Serial.println(odl3);
+  odl3 = 0.01723 *pulseIn(echoPin3, HIGH)-2;//modyfikacja po ustawieniu czujników   Serial.println(odl3);
   return odl3;      //odleglosc od sciany w cm
 }
 
@@ -192,8 +210,6 @@ void carStop()
     while(odl1 <= criticalPoint || odl2 <=criticalPoint  || odl3 <= criticalPoint )
 {
     analogWrite(VelocPin, 0);
-    Serial.println(“Autko za blisko ściany”);
+    Serial.println("Autko za blisko ściany");
 }
 }// Sprawdza czy auto nie znajduje sie zbyt blisko sciany aby wykonac skret
-
-//KONIEC
