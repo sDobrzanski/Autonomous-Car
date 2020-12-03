@@ -125,12 +125,15 @@ if(trybJazdy  == 1)
   { digitalWrite(motorLeftPin, LOW);
     carStart(); //funkcja aby auto podjechalo do pierwszej sciany
     PIDcontrol();
+    Serial.print(angleVal);
+    Serial.println(" kąt");
+    servo.write(angleVal);
   }else{
     servo.write(93);
     digitalWrite(motorRightPin, LOW);
     digitalWrite(motorLeftPin, HIGH);
     analogWrite(VelocPin,128);
-    while(odczytOdl4() >= criticalPoint || (odczytOdl1() < Setpoint && odczytOdl2() < Setpoint && odczytOdl2() < Setpoint))
+    while(odczytOdl4() >= criticalPoint || (odczytOdl1() < Setpoint && odczytOdl2() < Setpoint && odczytOdl3() < Setpoint))
     {
       //pusta pętla, auto jedzie do czasu aż odsunie się od ściany albo
       //napotka przeszkode z tylu
@@ -161,9 +164,6 @@ else
   digitalWrite(motorLeftPin, LOW);
   isFound = false;
 }
-   Serial.print(angleVal);
-   Serial.println(" kąt");
-   servo.write(angleVal);
    Blynk.run();
  }
 
